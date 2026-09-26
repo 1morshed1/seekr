@@ -41,6 +41,7 @@ earlier ones.
 | 3 | Query parser (AND/OR/NOT/phrase/prefix) | `04-query-parser.md` | `internal/query` |
 | 4 | Distributed scatter-gather | `05-scatter-gather.md` | `internal/shard`, `internal/coordinator` |
 | 5 | Persistence: WAL + SSTables | `06-persistence.md` | `internal/storage` |
+| 6 | Load testing & performance | `07-load-testing.md` | `internal/index/bench_test.go` |
 
 Plus `decisions.md`, which records the *why* behind the big engineering choices
 (a lightweight version of what the industry calls Architecture Decision Records).

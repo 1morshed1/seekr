@@ -61,7 +61,37 @@ docs/learning/         # the guided learning material — read this
 scripts/               # demo + load-test scripts
 ```
 
+## Features at a glance
+
+- ✅ Text analysis pipeline: Unicode tokenizer, lowercase, stop words, Porter stemmer
+- ✅ Inverted index with positions, per-field frequencies, and safe re-index/delete
+- ✅ BM25 ranking (TF saturation + document-length normalization)
+- ✅ Query language: term, implicit/explicit `AND`, `OR`, `NOT`, `"phrases"`,
+  `field:term`, `prefix*`, and `(grouping)`
+- ✅ Distributed scatter-gather across shards with graceful partial-result handling
+- ✅ Durable storage: fsync'd WAL + immutable SSTables with a sparse block index,
+  crash recovery, and compaction
+- ✅ HTTP/JSON APIs, runnable binaries, a one-command cluster demo, and benchmarks
+
+## Testing
+
+```bash
+go test ./...                        # full suite (unit + distributed integration)
+go test -bench=. ./internal/index/   # indexing & query benchmarks
+./scripts/demo.sh                    # live 3-shard cluster with sample queries
+```
+
+Durable shard (survives restarts):
+
+```bash
+go build -o bin/seekr-shard ./cmd/seekr-shard
+./bin/seekr-shard --id 0 --addr :9001 --data ./data/shard0
+```
+
 ## Status
 
-This project is built in phases; see the table in the overview doc for what each
-covers. The learning docs and code are written to be followed in order.
+All six phases are complete. See the table in the overview doc for what each
+covers; the learning docs and code are written to be followed in order. Where the
+engine deliberately simplifies (single standard analyzer, per-shard BM25 stats,
+snapshot checkpoints instead of an incremental LSM), the relevant learning doc and
+`docs/learning/decisions.md` explain the trade-off and what production does instead.
