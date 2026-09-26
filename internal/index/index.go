@@ -206,6 +206,17 @@ func (idx *InvertedIndex) docLength(docID string) int {
 	return idx.docLengths[docID]
 }
 
+// AllDocIDs returns every document ID currently in the index. The caller MUST
+// already hold the read lock (i.e. call it inside WithRead); it does not lock,
+// to avoid re-entrant read-lock deadlocks during query execution.
+func (idx *InvertedIndex) AllDocIDs() []string {
+	ids := make([]string, 0, len(idx.docs))
+	for id := range idx.docs {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 // WithRead runs fn while holding the index's read lock. Query execution uses this
 // so an entire query sees a consistent snapshot of the index.
 func (idx *InvertedIndex) WithRead(fn func()) {
