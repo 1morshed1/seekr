@@ -1,0 +1,18 @@
+# Compiled binaries produced by `go build ./cmd/...`
+/bin/
+seekr-shard
+seekr-coordinator
+
+# Local runtime data directories created by shard nodes (WAL + SSTables)
+/data/
+*.wal
+*.sst
+
+# Go workspace / test artifacts
+*.out
+*.test
+
+# Editor noise
+.DS_Store
+.idea/
+.vscode/
