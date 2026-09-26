@@ -61,3 +61,29 @@ add a Write-Ahead Log for durability and SSTable flushing for bounded memory
 - ✅ Mirrors how real log-structured storage engines are layered.
 - ❌ The in-memory-first design means a single shard's live index must fit in RAM
   between flushes. We make the flush threshold configurable.
+
+---
+
+## ADR-004: Full-snapshot checkpoints instead of an incremental LSM tree
+
+**Context.** Phase 5 needs SSTables. A true LSM tree flushes each memtable as a
+*new* immutable segment and merges across many segments at read time, with
+background compaction. That bounds memory but forces the read path to merge
+segments and forces distributed BM25 to reconcile global term statistics across
+them — a large increase in complexity.
+
+**Decision.** Make each checkpoint a *full* snapshot of the index written in the
+SSTable block format, keep only the latest snapshot (older ones are fully
+superseded, so "compaction" is just deleting them), and reload the snapshot whole
+on startup before replaying the WAL. This is the AOF+RDB model Redis uses.
+
+**Consequences.**
+- ✅ The search and scoring code from Phases 1–4 is reused unchanged and stays
+  exact; there is no cross-segment merge to reason about.
+- ✅ Still teaches every persistence mechanism: WAL durability with torn-write
+  recovery, the real SSTable on-disk format with a sparse block index, atomic
+  writes, checksums, crash recovery, and compaction.
+- ❌ A checkpoint rewrites the whole index (O(index size)) and the live index must
+  fit in RAM — it does not bound memory the way incremental segments do.
+- ➡️ The incremental-segment LSM is documented as the natural next step in
+  `06-persistence.md`.

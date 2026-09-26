@@ -16,17 +16,21 @@ import (
 	"github.com/1morshed1/seekr/internal/index"
 	"github.com/1morshed1/seekr/internal/protocol"
 	"github.com/1morshed1/seekr/internal/query"
+	"github.com/1morshed1/seekr/internal/storage"
 )
 
-// Server is a shard node.
+// Server is a shard node. It always searches an in-memory index (idx). When
+// engine is non-nil the shard is durable: writes go through the storage engine
+// (WAL + SSTable) and idx is the engine's in-memory index; when engine is nil the
+// shard is purely in-memory (handy for tests and ephemeral clusters).
 type Server struct {
-	id  int
-	idx *index.InvertedIndex
-	log *log.Logger
+	id     int
+	idx    *index.InvertedIndex
+	engine *storage.Engine
+	log    *log.Logger
 }
 
-// New creates a shard server with a fresh in-memory index using the standard
-// analyzer.
+// New creates an in-memory shard server (no persistence).
 func New(id int, logger *log.Logger) *Server {
 	return &Server{
 		id:  id,
@@ -35,14 +39,40 @@ func New(id int, logger *log.Logger) *Server {
 	}
 }
 
-// Index exposes the underlying index (used by persistence wiring in Phase 5).
+// NewPersistent creates a durable shard backed by a storage engine rooted at dir.
+// It recovers any previous state (loads the newest SSTable, replays the WAL) before
+// serving. flushThreshold is the WAL size in bytes that triggers a checkpoint.
+func NewPersistent(id int, logger *log.Logger, dir string, flushThreshold int64) (*Server, error) {
+	eng, err := storage.Open(dir, flushThreshold)
+	if err != nil {
+		return nil, err
+	}
+	return &Server{
+		id:     id,
+		idx:    eng.Index(),
+		engine: eng,
+		log:    logger,
+	}, nil
+}
+
+// Index exposes the underlying index.
 func (s *Server) Index() *index.InvertedIndex { return s.idx }
+
+// Close releases the storage engine (flushing the WAL). Safe to call on an
+// in-memory shard.
+func (s *Server) Close() error {
+	if s.engine != nil {
+		return s.engine.Close()
+	}
+	return nil
+}
 
 // Routes registers the shard's HTTP handlers on a mux and returns it.
 func (s *Server) Routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", s.handleHealth)
 	mux.HandleFunc("/v1/index", s.handleIndex)
+	mux.HandleFunc("/v1/delete", s.handleDelete)
 	mux.HandleFunc("/v1/search", s.handleSearch)
 	mux.HandleFunc("/v1/hydrate", s.handleHydrate)
 	mux.HandleFunc("/v1/stats", s.handleStats)
@@ -64,7 +94,35 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "document id required", http.StatusBadRequest)
 		return
 	}
-	s.idx.IndexDocument(req.Document)
+	// Durable path (WAL first) when persistence is enabled, else straight to memory.
+	if s.engine != nil {
+		if err := s.engine.IndexDocument(req.Document); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		s.idx.IndexDocument(req.Document)
+	}
+	writeJSON(w, http.StatusOK, protocol.IndexResponse{OK: true})
+}
+
+// handleDelete removes a document from this shard.
+func (s *Server) handleDelete(w http.ResponseWriter, r *http.Request) {
+	var req protocol.HydrateRequest // reuse: a list of doc IDs to delete
+	if err := decodeJSON(r, &req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	for _, id := range req.DocIDs {
+		if s.engine != nil {
+			if err := s.engine.DeleteDocument(id); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		} else {
+			s.idx.DeleteDocument(id)
+		}
+	}
 	writeJSON(w, http.StatusOK, protocol.IndexResponse{OK: true})
 }
 
