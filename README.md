@@ -1,7 +1,10 @@
 # seekr
 
+[![CI](https://github.com/1morshed1/seekr/actions/workflows/ci.yml/badge.svg)](https://github.com/1morshed1/seekr/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A miniature **distributed full-text search engine** — think a tiny Elasticsearch
-— built from scratch in Go for learning. It implements the real building blocks
+— built from scratch in Go. It implements the real building blocks
 of a search system:
 
 - an **inverted index** (the core data structure behind every search engine),
@@ -95,3 +98,7 @@ covers; the learning docs and code are written to be followed in order. Where th
 engine deliberately simplifies (single standard analyzer, per-shard BM25 stats,
 snapshot checkpoints instead of an incremental LSM), the relevant learning doc and
 `docs/learning/decisions.md` explain the trade-off and what production does instead.
+
+## License
+
+[MIT](LICENSE)

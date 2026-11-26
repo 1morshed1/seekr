@@ -45,7 +45,7 @@ That's another motivation for the incremental-segment LSM design discussed in
 `BenchmarkSingleTermScore{1k,10k,100k}` measure the scoring loop over corpora of
 1k / 10k / 100k documents. Single-term scoring is dominated by walking the term's
 posting list and computing BM25 per entry — microseconds even at 100k docs, well
-under the plan's 50 ms p99 target for a single shard.
+under the spec's 50 ms p99 target for a single shard.
 
 What makes queries slower:
 

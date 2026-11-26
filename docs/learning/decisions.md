@@ -22,7 +22,7 @@ objective of Phase 4 — is identical regardless of transport.
 
 **Consequences.**
 - ✅ Zero external tooling; `go build ./...` is all you need.
-- ✅ Endpoints are trivially inspectable with `curl`, which is great for learning.
+- ✅ Endpoints are trivially inspectable with `curl`, which makes debugging easy.
 - ✅ The transport is isolated behind a small client/server, so swapping in gRPC
   later would be a contained change.
 - ❌ JSON is slower and larger on the wire than Protobuf. For our scale
